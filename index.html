@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Loja Encantada</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(to right, #c77dff, #ff85c1, #d0a2f7);
+      color: #fff;
+      text-align: center;
+      padding: 2rem;
+    }
+    .container {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      padding: 2rem;
+      max-width: 600px;
+      margin: auto;
+    }
+    input, button, select {
+      margin: 0.5rem 0;
+      padding: 0.7rem;
+      width: 100%;
+      border-radius: 5px;
+      border: none;
+    }
+    button {
+      background-color: #8e44ad;
+      color: white;
+      cursor: pointer;
+    }
+    #adminPanel, #productList, #pedidoMsg, #carrinhoPanel, #painelUsuario {
+      display: none;
+    }
+    ul {
+      list-style: none;
+      padding: 0;
+    }
+    li {
+      background-color: rgba(255, 255, 255, 0.2);
+      margin: 5px;
+      padding: 10px;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Loja Encantada</h1>
+
+    <div id="auth">
+      <h2>Login / Registro</h2>
+      <input type="email" id="email" placeholder="Email">
+      <input type="password" id="password" placeholder="Senha">
+      <button onclick="login()">Login</button>
+      <button onclick="register()">Registrar</button>
+    </div>
+
+    <div id="painelUsuario">
+      <h2>Bem-vindo(a)!</h2>
+      <button onclick="verCarrinho()">Ver Carrinho</button>
+      <button onclick="logout()">Sair</button>
+    </div>
+
+    <div id="adminPanel">
+      <h2>Painel ADM - Cadastro de Produto</h2>
+      <input type="text" id="productName" placeholder="Nome do Produto">
+      <input type="number" id="productPrice" placeholder="Preço">
+      <button onclick="addProduct()">Cadastrar Produto</button>
+    </div>
+
+    <div id="productList">
+      <h2>Produtos</h2>
+      <ul id="products"></ul>
+    </div>
+
+    <div id="carrinhoPanel">
+      <h2>Carrinho</h2>
+      <ul id="carrinho"></ul>
+      <p id="total"></p>
+      <button onclick="fazerPedido()">Finalizar Pedido</button>
+    </div>
+
+    <div id="pedidoMsg"></div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyABAX3uDTsf36qys9URmadGKT08cF_DyfY",
+    authDomain: "shop-d84a9.firebaseapp.com",
+    projectId: "shop-d84a9",
+    storageBucket: "shop-d84a9.firebasestorage.app",
+    messagingSenderId: "47050533977",
+    appId: "1:47050533977:web:d4013c99b52c11412c1548"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.database();
+
+    const adminEmail = "admin@loja.com";
+    let carrinho = [];
+
+    function register() {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      auth.createUserWithEmailAndPassword(email, password)
+        .then(() => alert("Usuário registrado!"))
+        .catch(error => alert(error.message));
+    }
+
+    function login() {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      auth.signInWithEmailAndPassword(email, password)
+        .then(user => {
+          document.getElementById('auth').style.display = 'none';
+          document.getElementById('productList').style.display = 'block';
+          document.getElementById('painelUsuario').style.display = 'block';
+          if (email === adminEmail) {
+            document.getElementById('adminPanel').style.display = 'block';
+          }
+          loadProducts();
+        })
+        .catch(error => alert(error.message));
+    }
+
+    function logout() {
+      auth.signOut().then(() => location.reload());
+    }
+
+    function addProduct() {
+      const name = document.getElementById('productName').value;
+      const price = document.getElementById('productPrice').value;
+      const productRef = db.ref('produtos').push();
+      productRef.set({ name, price });
+      alert("Produto cadastrado!");
+    }
+
+    function loadProducts() {
+      const list = document.getElementById('products');
+      list.innerHTML = '';
+      db.ref('produtos').on('value', snapshot => {
+        list.innerHTML = '';
+        snapshot.forEach(child => {
+          const item = child.val();
+          const li = document.createElement('li');
+          li.innerHTML = `${item.name} - R$${item.price} <button onclick='addCarrinho("${item.name}", ${item.price})'>Adicionar</button>`;
+          list.appendChild(li);
+        });
+      });
+    }
+
+    function addCarrinho(nome, preco) {
+      carrinho.push({ nome, preco });
+      alert("Adicionado ao carrinho!");
+    }
+
+    function verCarrinho() {
+      document.getElementById('carrinhoPanel').style.display = 'block';
+      const list = document.getElementById('carrinho');
+      const total = document.getElementById('total');
+      list.innerHTML = '';
+      let soma = 0;
+      carrinho.forEach(item => {
+        const li = document.createElement('li');
+        li.textContent = `${item.nome} - R$${item.preco}`;
+        list.appendChild(li);
+        soma += parseFloat(item.preco);
+      });
+      total.textContent = `Total: R$ ${soma.toFixed(2)}`;
+    }
+
+    function fazerPedido() {
+      const pedidoId = 'PED-' + Date.now();
+      document.getElementById('pedidoMsg').style.display = 'block';
+      document.getElementById('pedidoMsg').innerHTML = `<h3>Pedido Realizado!</h3><p>Número do pedido: <strong>${pedidoId}</strong></p>`;
+      carrinho = [];
+      document.getElementById('carrinhoPanel').style.display = 'none';
+    }
+  </script>
+</body>
+</html>
