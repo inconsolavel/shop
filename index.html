@@ -88,7 +88,7 @@
 
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyABAX3uDTsf36qys9URmadGKT08cF_DyfY",
@@ -101,7 +101,7 @@
 
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
-    const db = firebase.database();
+    const db = firebase.firestore();
 
     const adminEmail = "admin@loja.com";
     let carrinho = [];
@@ -137,18 +137,18 @@
     function addProduct() {
       const name = document.getElementById('productName').value;
       const price = document.getElementById('productPrice').value;
-      const productRef = db.ref('produtos').push();
-      productRef.set({ name, price });
-      alert("Produto cadastrado!");
+      db.collection('produtos').add({ name, price })
+        .then(() => alert("Produto cadastrado!"))
+        .catch(error => alert(error.message));
     }
 
     function loadProducts() {
       const list = document.getElementById('products');
       list.innerHTML = '';
-      db.ref('produtos').on('value', snapshot => {
+      db.collection('produtos').get().then(snapshot => {
         list.innerHTML = '';
-        snapshot.forEach(child => {
-          const item = child.val();
+        snapshot.forEach(doc => {
+          const item = doc.data();
           const li = document.createElement('li');
           li.innerHTML = `${item.name} - R$${item.price} <button onclick='addCarrinho("${item.name}", ${item.price})'>Adicionar</button>`;
           list.appendChild(li);
