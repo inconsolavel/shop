@@ -91,7 +91,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <script>
     const firebaseConfig = {
-      apiKey: "AIzaSyABAX3uDTsf36qys9URmadGKT08cF_DyfY",
+       apiKey: "AIzaSyABAX3uDTsf36qys9URmadGKT08cF_DyfY",
     authDomain: "shop-d84a9.firebaseapp.com",
     projectId: "shop-d84a9",
     storageBucket: "shop-d84a9.firebasestorage.app",
@@ -105,6 +105,7 @@
 
     const adminEmail = "admin@loja.com";
     let carrinho = [];
+    let usuarioAtual = null;
 
     function register() {
       const email = document.getElementById('email').value;
@@ -119,6 +120,7 @@
       const password = document.getElementById('password').value;
       auth.signInWithEmailAndPassword(email, password)
         .then(user => {
+          usuarioAtual = user.user;
           document.getElementById('auth').style.display = 'none';
           document.getElementById('productList').style.display = 'block';
           document.getElementById('painelUsuario').style.display = 'block';
@@ -157,7 +159,12 @@
     }
 
     function addCarrinho(nome, preco) {
-      carrinho.push({ nome, preco });
+      const existente = carrinho.find(item => item.nome === nome);
+      if (existente) {
+        existente.quantidade++;
+      } else {
+        carrinho.push({ nome, preco, quantidade: 1 });
+      }
       alert("Adicionado ao carrinho!");
     }
 
@@ -169,9 +176,9 @@
       let soma = 0;
       carrinho.forEach(item => {
         const li = document.createElement('li');
-        li.textContent = `${item.nome} - R$${item.preco}`;
+        li.textContent = `${item.nome} (x${item.quantidade}) - R$${(item.preco * item.quantidade).toFixed(2)}`;
         list.appendChild(li);
-        soma += parseFloat(item.preco);
+        soma += item.preco * item.quantidade;
       });
       total.textContent = `Total: R$ ${soma.toFixed(2)}`;
     }
@@ -182,10 +189,28 @@
         return;
       }
       const pedidoId = 'PED-' + Date.now();
+      const email = usuarioAtual.email;
+      const itens = carrinho.map(item => ({ nome: item.nome, preco: item.preco, quantidade: item.quantidade }));
+      db.collection('pedidos').add({
+        pedidoId,
+        email,
+        itens,
+        data: new Date()
+      });
+      enviarEmail(pedidoId, email);
       document.getElementById('pedidoMsg').style.display = 'block';
       document.getElementById('pedidoMsg').innerHTML = `<h3>Pedido Realizado!</h3><p>Número do pedido: <strong>${pedidoId}</strong></p>`;
       carrinho = [];
       document.getElementById('carrinhoPanel').style.display = 'none';
+    }
+
+    function enviarEmail(pedidoId, emailUsuario) {
+      const assunto = encodeURIComponent("Novo Pedido Realizado");
+      const corpo = encodeURIComponent(`Pedido: ${pedidoId}\nCliente: ${emailUsuario}`);
+      // Para o usuário:
+      window.open(`mailto:${emailUsuario}?subject=${assunto}&body=${corpo}`);
+      // Para o ADM:
+      window.open(`mailto:${adminEmail}?subject=${assunto}&body=${corpo}`);
     }
   </script>
 </body>
