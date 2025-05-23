@@ -6,30 +6,44 @@
   <title>Loja Encantada</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       background: linear-gradient(to right, #c77dff, #ff85c1, #d0a2f7);
-      color: #fff;
-      text-align: center;
+      color: #333;
       padding: 2rem;
+      margin: 0;
     }
     .container {
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 10px;
+      background: white;
+      border-radius: 16px;
       padding: 2rem;
-      max-width: 600px;
+      max-width: 800px;
       margin: auto;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.1);
+      transition: all 0.3s ease;
+    }
+    h1 {
+      color: #8e44ad;
+      margin-bottom: 1rem;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
     }
     input, button, select {
       margin: 0.5rem 0;
-      padding: 0.7rem;
+      padding: 0.75rem;
       width: 100%;
-      border-radius: 5px;
-      border: none;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 1rem;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
     }
     button {
       background-color: #8e44ad;
       color: white;
+      font-weight: bold;
       cursor: pointer;
+      transition: background 0.3s;
+    }
+    button:hover {
+      background-color: #732d91;
     }
     #adminPanel, #productList, #pedidoMsg, #carrinhoPanel, #painelUsuario {
       display: none;
@@ -39,10 +53,23 @@
       padding: 0;
     }
     li {
-      background-color: rgba(255, 255, 255, 0.2);
-      margin: 5px;
-      padding: 10px;
+      background-color: #f2e6ff;
+      margin: 5px 0;
+      padding: 12px;
+      border-radius: 6px;
+      color: #333;
+    }
+    .produto-btn {
+      background-color: #e84393;
+      border: none;
+      color: white;
+      padding: 6px 12px;
+      margin-left: 10px;
       border-radius: 5px;
+      cursor: pointer;
+    }
+    .produto-btn:hover {
+      background-color: #d63072;
     }
   </style>
 </head>
@@ -91,12 +118,12 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <script>
     const firebaseConfig = {
-       apiKey: "AIzaSyABAX3uDTsf36qys9URmadGKT08cF_DyfY",
-    authDomain: "shop-d84a9.firebaseapp.com",
-    projectId: "shop-d84a9",
-    storageBucket: "shop-d84a9.firebasestorage.app",
-    messagingSenderId: "47050533977",
-    appId: "1:47050533977:web:d4013c99b52c11412c1548"
+      apiKey: "SUA_API_KEY",
+      authDomain: "SEU_DOMINIO.firebaseapp.com",
+      projectId: "SEU_PROJECT_ID",
+      storageBucket: "SEU_BUCKET.appspot.com",
+      messagingSenderId: "SEU_MESSAGING_ID",
+      appId: "SEU_APP_ID"
     };
 
     firebase.initializeApp(firebaseConfig);
@@ -121,15 +148,27 @@
       auth.signInWithEmailAndPassword(email, password)
         .then(user => {
           usuarioAtual = user.user;
-          document.getElementById('auth').style.display = 'none';
-          document.getElementById('productList').style.display = 'block';
-          document.getElementById('painelUsuario').style.display = 'block';
-          if (email === adminEmail) {
-            document.getElementById('adminPanel').style.display = 'block';
-          }
+          mostrarInterface(email);
           loadProducts();
         })
         .catch(error => alert(error.message));
+    }
+
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        usuarioAtual = user;
+        mostrarInterface(user.email);
+        loadProducts();
+      }
+    });
+
+    function mostrarInterface(email) {
+      document.getElementById('auth').style.display = 'none';
+      document.getElementById('productList').style.display = 'block';
+      document.getElementById('painelUsuario').style.display = 'block';
+      if (email === adminEmail) {
+        document.getElementById('adminPanel').style.display = 'block';
+      }
     }
 
     function logout() {
@@ -152,7 +191,7 @@
         snapshot.forEach(doc => {
           const item = doc.data();
           const li = document.createElement('li');
-          li.innerHTML = `${item.name} - R$${item.price} <button onclick='addCarrinho("${item.name}", ${item.price})'>Adicionar</button>`;
+          li.innerHTML = `${item.name} - R$${item.price} <button class='produto-btn' onclick='addCarrinho("${item.name}", ${item.price})'>Adicionar</button>`;
           list.appendChild(li);
         });
       });
@@ -197,9 +236,9 @@
         itens,
         data: new Date()
       });
-      enviarEmail(pedidoId, email);
       document.getElementById('pedidoMsg').style.display = 'block';
       document.getElementById('pedidoMsg').innerHTML = `<h3>Pedido Realizado!</h3><p>Número do pedido: <strong>${pedidoId}</strong></p>`;
+      enviarEmail(pedidoId, email);
       carrinho = [];
       document.getElementById('carrinhoPanel').style.display = 'none';
     }
@@ -207,10 +246,11 @@
     function enviarEmail(pedidoId, emailUsuario) {
       const assunto = encodeURIComponent("Novo Pedido Realizado");
       const corpo = encodeURIComponent(`Pedido: ${pedidoId}\nCliente: ${emailUsuario}`);
-      // Para o usuário:
-      window.open(`mailto:${emailUsuario}?subject=${assunto}&body=${corpo}`);
-      // Para o ADM:
-      window.open(`mailto:${adminEmail}?subject=${assunto}&body=${corpo}`);
+      const emails = [emailUsuario, adminEmail].join(",");
+      const mailtoLink = `mailto:${emails}?subject=${assunto}&body=${corpo}`;
+      const emailMsg = document.createElement('p');
+      emailMsg.innerHTML = `Clique para enviar o e-mail: <a href="${mailtoLink}">Notificar Pedido</a>`;
+      document.getElementById('pedidoMsg').appendChild(emailMsg);
     }
   </script>
 </body>
